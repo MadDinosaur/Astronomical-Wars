@@ -40,7 +40,8 @@ lightsaber = {
     length =  2,
     width = 1,
 	size = 2,
-	animation_frames = 2
+	animation_frames = 2,
+	hitbox = 10
 }
 
 player = {
@@ -61,8 +62,11 @@ player = {
 	animation_frames = 2
 }
 
-screen = 0
-transition_counter = 0
+screen_manager = { 
+	screen = 0,
+	transition_counter = 0,
+	transition_speed = 100
+}
 
 -- RENDERING AND ANIMATING --
 function generate_sprite(name, sprite, flip, scale, x, y)
@@ -89,7 +93,7 @@ end
 -- PLAYER INPUT --
 function input() 
 	if player.lightsaber then player.sprite = player.sprite_walk + player.switch_saber else player.sprite = player.sprite_walk end
-	
+
 	if btn(0) then player.y=player.y-1 return end
 	if btn(1) then player.y=player.y+1 return end
 	if btn(2) then 
@@ -110,23 +114,32 @@ function input()
 	if player.lightsaber then player.sprite = player.sprite_idle + player.switch_saber else player.sprite = player.sprite_idle end
 end
 
+function switch_sides()
+	input()
+	print(player.sprite)
+	if player.x > alignment.middle_align then player.sprite = player.sprite + player.switch_sides end
+	print(player.sprite, 0, 10)
+end
+
 -- SCREENS --
-function render_screen(screen)
-	if screen == 0 then start_screen() end
-	if screen == 1 then battle_screen() end
+function render_screen()
+	if screen_manager.screen == 0 then start_screen() end
+	if screen_manager.screen == 1 then battle_screen() end
 end
 
 function screen_transition()
-	if screen == 0 then
+	if screen_manager.screen == 0 then
 		fire_left.y = fire_left.y - 1
 		fire_right.y = fire_right.y - 1
 		yoda.y = yoda.y - 1
 		start_screen()
 	end
-	transition_counter = transition_counter + 1
+	screen_manager.transition_counter = screen_manager.transition_counter + 1
 end
 
 function start_screen()
+	input()
+
 	animate_sprite(fire_left)
     animate_sprite(fire_right)
     generate_sprite(yoda)
@@ -139,10 +152,19 @@ function start_screen()
 	pick_up(lightsaber)
 end
 
-function battle_screen() end
+function battle_screen() 
+	switch_sides()
+	
+	map(0,17,30,17,0,0)
+	animate_sprite(player, player.direction)
+end
 
+-- MECHANICS --
 function pick_up(object)
-	if player.x == object.x or player.y == object.y then
+	if player.x >= object.x - object.hitbox
+		 and player.x < object.x + object.hitbox
+			and player.y >= object.y - object.hitbox
+			and player.y < object.y + object.hitbox then
 		object.x = 0
 		object.y = 0
 		object.sprite = 256
@@ -153,15 +175,24 @@ function pick_up(object)
 	end
 end
 
+function enemy_movement()
+
+end
+
 function TIC()
-	input()
+	--input()
 	
 	cls(14)
 	
-	if transition_counter > alignment.bottom_margin then screen = screen + 1 transition_counter = 0 end
+	if screen_manager.transition_counter > screen_manager.transition_speed then 
+		screen_manager.screen = screen_manager.screen + 1 
+		screen_manager.transition_counter = 0 
+		player.x = alignment.middle_align
+		player.y = 0
+	end
 	
-	if transition_counter > 0 then 	screen_transition() else
-		if player.y < alignment.bottom_margin then  render_screen(screen) else 
+	if screen_manager.transition_counter > 0 then screen_transition() else
+		if player.y < alignment.bottom_margin then  render_screen() else 
 			screen_transition() end
 	end
 end
