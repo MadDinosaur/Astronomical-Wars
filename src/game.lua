@@ -11,7 +11,7 @@ alignment = {
 yoda =  {
 	x = alignment.middle_align,
 	y = 20,
-	sprite = 257,
+	sprite = 256,
 	length = 2,
     width = 2
 }
@@ -19,7 +19,7 @@ yoda =  {
 fire_right = {
 	x = alignment.right_align,
 	y = 30,
-	sprite = 267,
+	sprite = 268,
 	length = 1,
     width = 1,
 	size = 3,
@@ -29,7 +29,7 @@ fire_right = {
 fire_left = {
 	x = alignment.left_align,
 	y = 30,
-	sprite = 267,
+	sprite = 268,
 	length = 1,
     width = 1,
 	size = 3,
@@ -39,7 +39,7 @@ fire_left = {
 lightsaber = {
     x = alignment.middle_align + 10,
     y = 50,
-    sprite = 259,
+    sprite = 258,
     length =  2,
     width = 1,
 	size = 2,
@@ -51,27 +51,33 @@ player = {
 	x = alignment.middle_align,
 	y = 90,
 	sprite,
-	sprite_idle = 293,
-	sprite_walk = 289,
-	sprite_attack = 329,
-	sprite_dead = 297,
-	switch_saber = 32,
-	switch_sides = 64,
+	sprite_idle = 292,
+	sprite_walk = 288,
+	sprite_attack = 352,
+	sprite_dead = 356,
+	switch_saber = 8,
+	switch_sides = 32,
 	lightsaber = false,
 	direction = 0,
 	length = 2,
 	width = 2,
 	size = 2,
-	animation_frames = 2
+	animation_frames = 2,
+	hitbox = 10,
+	vision = 20,
+	range = 15,
+	life = 3,
+	sith_kill_count = 0,
+	jedi_kill_count = 0
 }
 
 enemy_dark = { 
 	x,
 	y,
-	sprite = 421,
-	sprite_idle = 421,
-	sprite_walk = 417,
-	sprite_attack = 425,
+	sprite = 420,
+	sprite_idle = 420,
+	sprite_walk = 416,
+	sprite_attack = 424,
 	direction = 0,
 	length = 2,
 	width = 2,
@@ -82,10 +88,10 @@ enemy_dark = {
 enemy_light = { 
 	x,
 	y,
-	sprite = 453,
-	sprite_idle = 453,
-	sprite_walk = 449,
-	sprite_attack = 457,
+	sprite = 452,
+	sprite_idle = 452,
+	sprite_walk = 448,
+	sprite_attack = 456,
 	direction = 0,
 	length = 2,
 	width = 2,
@@ -95,12 +101,31 @@ enemy_light = {
 
 enemies = {}
 num_enemies = 0
-max_enemies = 10
+max_enemies = 2
+
+header_text = {
+	x = 44,
+	y = 10
+}
 
 screen_manager = { 
 	screen = 0,
 	transition_counter = 0,
 	transition_speed = 100
+}
+
+GUI = {
+	hp_bar = {
+		right_border = 287,
+		left_border = 283,
+		red = 285,
+		blue = 284,
+		empty = 286,
+		x = 0,
+		y = 0,
+		width = 1,
+		length = 1
+	} 
 }
 
 -- RENDERING AND ANIMATING --
@@ -142,7 +167,7 @@ function input()
 		return 
 		end	
 	if btn(4) then
-		if player.lightsaber then player.sprite = player.sprite_attack end
+		if player.lightsaber then player.sprite = player.sprite_attack enemy_kill() end
 		return
 	end
 
@@ -151,11 +176,18 @@ end
 
 function switch_sides()
 	input()
-	if player.x > alignment.middle_align then player.sprite = player.sprite + player.switch_sides end
+	if player.x <= alignment.middle_align then player.sprite = player.sprite + player.switch_sides end
 end
 
 -- SCREENS --
 function render_screen()
+	-- life bar
+	generate_sprite(GUI.hp_bar, GUI.hp_bar.left_border)
+	for i = 1, player.life do
+		generate_sprite(GUI.hp_bar, GUI.hp_bar.red, nil, nil, GUI.hp_bar.x + i * 8, GUI.hp_bar.y)
+	end
+	generate_sprite(GUI.hp_bar, GUI.hp_bar.right_border, nil, nil, GUI.hp_bar.x + player.life * 8, GUI.hp_bar.y)
+
 	if screen_manager.screen == 0 then start_screen() end
 	if screen_manager.screen == 1 then battle_screen() end
 end
@@ -165,6 +197,7 @@ function screen_transition()
 		fire_left.y = fire_left.y - 1
 		fire_right.y = fire_right.y - 1
 		yoda.y = yoda.y - 1
+		header_text.y = header_text.y - 1
 		start_screen()
 	end
 	screen_manager.transition_counter = screen_manager.transition_counter + 1
@@ -173,14 +206,15 @@ end
 function start_screen()
 	input()
 
+	map()
 	animate_sprite(fire_left)
     animate_sprite(fire_right)
     generate_sprite(yoda)
     animate_sprite(lightsaber)
     animate_sprite(player, player.direction)
 	
-	print("It's dangerous to go alone...",44,10)
-	print("Take THIS!",94, 20)
+	print("Dangerous to go alone, it is...",header_text.x,header_text.y)
+	print("Take THIS!",header_text.x + 50, header_text.y + 10)
 
 	pick_up(lightsaber)
 end
@@ -188,7 +222,7 @@ end
 function battle_screen() 
 	switch_sides()
 
-	map(0,17,30,17,0,0)
+	map(90,34,30,17,0,0)
 	animate_sprite(player, player.direction)
 	enemy_spawn()
 	enemy_movement()
@@ -211,17 +245,36 @@ function pick_up(object)
 end
 
 function enemy_movement()
-	enemy_type = 0
-	if player.x <= alignment.middle_align then enemy_type = 1 end
+	enemy_type = nil
+	x_player_position = nil
+
+	if player.x <= alignment.middle_align then x_player_position = player.x enemy_type = 1 end
+	if player.x > alignment.middle_align then x_player_position = player.x - alignment.middle_align enemy_type = 0 end
 	
 	for i = enemy_type, num_enemies - 1, 2 do
+		if enemies[i] == nil then goto continue end
+		
 		x = enemies[i] & 0xFFFF -- unpack x
 		y = (enemies[i] >> 16) & 0xFFFF -- unpack y
+	
+		if (x > x_player_position + player.vision or x < x_player_position- player.vision)
+		and (y > player.y + player.vision or y < player.y - player.vision) then return end -- enemy deactivated
 
-		if (player.x - alignment.middle_align) ~= x then x = x + (player.x - alignment.middle_align - x)/math.abs(player.x - alignment.middle_align - x) end -- move closer to player x axis
-		if player.y ~= y then y = y + (player.y - y)/math.abs(player.y - y) end -- move closer to player y axis
+		if (x <= x_player_position + player.hitbox and x >= x_player_position - player.hitbox)
+		and (y <= player.y + player.hitbox and y >= player.y - player.hitbox) then -- enemy in range to attack
+			-- insert attack animation here
+			player.life = player.life - 1
+			print (player.life)
+			return
+		end
+
+		if x > x_player_position + player.hitbox or x < x_player_position - player.hitbox then 
+			x = x + (x_player_position - x)/math.abs(x_player_position - x) end -- move closer to player x axis
+		if y > player.y + player.hitbox or y < player.y - player.hitbox then y = y + (player.y - y)/math.abs(player.y - y) end -- move closer to player y axis
 
 		enemies[i] = x | (y << 16) -- pack (x,y)
+			
+		::continue::
 	end
 end
 
@@ -229,7 +282,7 @@ function enemy_spawn()
 	-- init
 	while num_enemies < max_enemies
 	do
-		y = math.random(alignment.upper_margin, alignment.bottom_margin)
+		y = math.random(alignment.upper_margin - 40, alignment.bottom_margin)
 		x = math.random(0, alignment.middle_align)
 
 		enemies[num_enemies] = x | (y << 16)
@@ -239,21 +292,50 @@ function enemy_spawn()
 	
 	-- render
 	for i = 0, num_enemies - 1 do
+		if enemies[i] == nil then goto continue end
+		
 		x = enemies[i] & 0xFFFF
 		y = (enemies[i] >> 16) & 0xFFFF
 		
-		animate_sprite(enemy_dark, enemy_dark.direction, alignment.middle_align + x, y)
-		animate_sprite(enemy_light, enemy_light.direction, alignment.middle_align - x, y)
+		if math.fmod(i,2) == 0  then 
+			animate_sprite(enemy_dark, enemy_dark.direction, alignment.middle_align + x, y)
+		else
+			animate_sprite(enemy_light, enemy_light.direction, alignment.middle_align - x, y)
+		end
+		
+		::continue::
+	end
+end
+
+function enemy_kill() 
+	if player.x < alignment.middle_align then x_player_position = player.x enemy_type = 1 end
+	if player.x > alignment.middle_align then x_player_position = player.x - alignment.middle_align enemy_type = 0 end
+
+	for i = enemy_type, num_enemies - 1, 2 do
+		if enemies[i] == nil then goto continue end
+		
+		x = enemies[i] & 0xFFFF -- unpack x
+		y = (enemies[i] >> 16) & 0xFFFF -- unpack y
+		
+		if x <= x_player_position + player.range and x >= x_player_position - player.range
+		and y <= player.y + player.range and y >= player.y - player.range then
+			-- insert death animation here
+			enemies[i] = nil -- remove enemy
+			player.sith_kill_count = player.sith_kill_count + (1 * enemy_type)
+			player.jedi_kill_count = player.jedi_kill_count + (1 * -(enemy_type - 1)) -- increment counters
+		end
+		
+		::continue::
 	end
 end
 
 function TIC()
 	cls(14)
-	
+
 	if screen_manager.transition_counter > screen_manager.transition_speed then 
 		screen_manager.screen = screen_manager.screen + 1 
 		screen_manager.transition_counter = 0 
-		player.x = alignment.middle_align
+		player.x = alignment.middle_align + 10
 		player.y = 0
 	end
 	
