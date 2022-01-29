@@ -139,7 +139,7 @@ function start_screen()
 	pick_up(lightsaber)
 end
 
-function battle_screen()end
+function battle_screen() end
 
 function pick_up(object)
 	if player.x == object.x or player.y == object.y then
