@@ -2,7 +2,10 @@ alignment = {
 	left_align = 44,
 	middle_align = 104,
 	right_align = 174,
-	bottom_margin = 128
+	upper_margin = 20,
+	bottom_margin = 128,
+	right_margin = 230,
+	left_margin = 0
 }
 
 yoda =  {
@@ -47,7 +50,7 @@ lightsaber = {
 player = {
 	x = alignment.middle_align,
 	y = 90,
-	sprite = 293,
+	sprite,
 	sprite_idle = 293,
 	sprite_walk = 289,
 	sprite_attack = 329,
@@ -61,6 +64,38 @@ player = {
 	size = 2,
 	animation_frames = 2
 }
+
+enemy_dark = { 
+	x,
+	y,
+	sprite = 421,
+	sprite_idle = 421,
+	sprite_walk = 417,
+	sprite_attack = 425,
+	direction = 0,
+	length = 2,
+	width = 2,
+	size = 2,
+	animation_frames = 2
+}
+
+enemy_light = { 
+	x,
+	y,
+	sprite = 453,
+	sprite_idle = 453,
+	sprite_walk = 449,
+	sprite_attack = 457,
+	direction = 0,
+	length = 2,
+	width = 2,
+	size = 2,
+	animation_frames = 2
+}
+
+enemies = {}
+num_enemies = 0
+max_enemies = 10
 
 screen_manager = { 
 	screen = 0,
@@ -85,9 +120,9 @@ function generate_sprite(name, sprite, flip, scale, x, y)
 	spr(ssprite, sx, sy, 0, sscale, sflip, 0, name.width, name.length)
 end
 
-function animate_sprite(name, flip)
+function animate_sprite(name, flip, x, y)
     t = (time()//10)%60//(60/name.animation_frames)
-    generate_sprite(name, name.sprite + (t*name.width), flip, name.size)
+    generate_sprite(name, name.sprite + (t*name.width), flip, name.size, x, y)
 end
 
 -- PLAYER INPUT --
@@ -116,9 +151,7 @@ end
 
 function switch_sides()
 	input()
-	print(player.sprite)
 	if player.x > alignment.middle_align then player.sprite = player.sprite + player.switch_sides end
-	print(player.sprite, 0, 10)
 end
 
 -- SCREENS --
@@ -154,9 +187,11 @@ end
 
 function battle_screen() 
 	switch_sides()
-	
+
 	map(0,17,30,17,0,0)
 	animate_sprite(player, player.direction)
+	enemy_spawn()
+	enemy_movement()
 end
 
 -- MECHANICS --
@@ -176,12 +211,43 @@ function pick_up(object)
 end
 
 function enemy_movement()
+	enemy_type = 0
+	if player.x <= alignment.middle_align then enemy_type = 1 end
+	
+	for i = enemy_type, num_enemies - 1, 2 do
+		x = enemies[i] & 0xFFFF -- unpack x
+		y = (enemies[i] >> 16) & 0xFFFF -- unpack y
 
+		if (player.x - alignment.middle_align) ~= x then x = x + (player.x - alignment.middle_align - x)/math.abs(player.x - alignment.middle_align - x) end -- move closer to player x axis
+		if player.y ~= y then y = y + (player.y - y)/math.abs(player.y - y) end -- move closer to player y axis
+
+		enemies[i] = x | (y << 16) -- pack (x,y)
+	end
+end
+
+function enemy_spawn()
+	-- init
+	while num_enemies < max_enemies
+	do
+		y = math.random(alignment.upper_margin, alignment.bottom_margin)
+		x = math.random(0, alignment.middle_align)
+
+		enemies[num_enemies] = x | (y << 16)
+		enemies[num_enemies + 1] = x | (y << 16)
+		num_enemies = num_enemies + 2
+	end
+	
+	-- render
+	for i = 0, num_enemies - 1 do
+		x = enemies[i] & 0xFFFF
+		y = (enemies[i] >> 16) & 0xFFFF
+		
+		animate_sprite(enemy_dark, enemy_dark.direction, alignment.middle_align + x, y)
+		animate_sprite(enemy_light, enemy_light.direction, alignment.middle_align - x, y)
+	end
 end
 
 function TIC()
-	--input()
-	
 	cls(14)
 	
 	if screen_manager.transition_counter > screen_manager.transition_speed then 
