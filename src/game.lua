@@ -160,14 +160,36 @@ header_text = {
 	y = 10
 }
 
+title_text_1 = {
+	x = 24,
+	y = 10,
+	sprite = 480,
+	length = 2,
+	width = 12,
+	size = 3
+}
+
+title_text_2 = {
+	x = 84,
+	y = 30,
+	sprite = 492,
+	length = 2,
+	width = 4,
+	size = 3
+}
+
 screen_manager = { 
-	screen = 0,
+	screen = -1,
 	transition_counter = 0,
 	transition_speed = 50,
 	transition_time = 17*2,
 	map_coord_x = 90,
-	map_coord_y = 17,
+	map_coord_y = 0,
 	div = alignment.middle_align
+}
+
+music_player = {
+	playing = -1
 }
 
 GUI = {
@@ -232,11 +254,17 @@ end
 
 function switch_sides()
 	input()
-	if player.x <= screen_manager.div then player.sprite = player.sprite + player.switch_sides end
+	if player.x <= screen_manager.div then 
+		player.sprite = player.sprite + player.switch_sides 
+		if music_player.playing ~= 0 then music(0) music_player.playing = 0 end
+	else 
+		if music_player.playing ~= 1 then music(1) music_player.playing = 1 end
+	end
 end
 
 -- SCREENS --
 function render_screen()
+	if screen_manager.screen == -1 then splash_screen() end
 	if screen_manager.screen == 0 then start_screen() end
 	if screen_manager.screen == 1 then battle_screen() render_life() end
 	if screen_manager.screen == 2 then battle_screen() render_life() end
@@ -288,6 +316,17 @@ trace (screen_manager.screen)
 	end
 	map(screen_manager.map_coord_x, screen_manager.map_coord_y, 30,17,0,0)
 	screen_manager.transition_counter = screen_manager.transition_counter + 1
+end
+
+function splash_screen()
+	map(screen_manager.map_coord_x, screen_manager.map_coord_y, 30,17,0,0)
+	generate_sprite(title_text_1)
+	generate_sprite(title_text_2)
+	print("THE RISE OF DUALITY",64,70,8)
+	if music_player.playing ~= 4 then 
+		music(4)
+		music_player.playing = 4
+	end
 end
 
 function start_screen()
