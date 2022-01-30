@@ -67,6 +67,7 @@ player = {
 	vision = 20,
 	range = 15,
 	life = 3,
+	max_life = 3,
 	sith_kill_count = 0,
 	jedi_kill_count = 0
 }
@@ -111,7 +112,9 @@ header_text = {
 screen_manager = { 
 	screen = 0,
 	transition_counter = 0,
-	transition_speed = 100
+	transition_speed = 100,
+	map_coord_x = 0,
+	map_coord_y = 0
 }
 
 GUI = {
@@ -181,15 +184,20 @@ end
 
 -- SCREENS --
 function render_screen()
-	-- life bar
+	if screen_manager.screen == 0 then start_screen() end
+	if screen_manager.screen == 1 then battle_screen(90,34) render_life() end
+	if screen_manager.screen == 2 then battle_screen(90,51) render_life() end
+end
+
+function render_life()
 	generate_sprite(GUI.hp_bar, GUI.hp_bar.left_border)
 	for i = 1, player.life do
-		generate_sprite(GUI.hp_bar, GUI.hp_bar.red, nil, nil, GUI.hp_bar.x + i * 8, GUI.hp_bar.y)
+		generate_sprite(GUI.hp_bar, GUI.hp_bar.red, nil, nil, GUI.hp_bar.x + i * 16, GUI.hp_bar.y)
 	end
-	generate_sprite(GUI.hp_bar, GUI.hp_bar.right_border, nil, nil, GUI.hp_bar.x + player.life * 8, GUI.hp_bar.y)
-
-	if screen_manager.screen == 0 then start_screen() end
-	if screen_manager.screen == 1 then battle_screen() end
+	for i = player.life + 1, player.max_life do
+		generate_sprite(GUI.hp_bar, GUI.hp_bar.empty, nil, nil, GUI.hp_bar.x + i * 16, GUI.hp_bar.y)
+	end
+	generate_sprite(GUI.hp_bar, GUI.hp_bar.right_border, nil, nil, GUI.hp_bar.x + (player.max_life + 1) * 16, GUI.hp_bar.y)
 end
 
 function screen_transition()
@@ -199,6 +207,9 @@ function screen_transition()
 		yoda.y = yoda.y - 1
 		header_text.y = header_text.y - 1
 		start_screen()
+	end
+	if screen_manager.screen == 1 then
+		battle_screen()
 	end
 	screen_manager.transition_counter = screen_manager.transition_counter + 1
 end
@@ -219,10 +230,10 @@ function start_screen()
 	pick_up(lightsaber)
 end
 
-function battle_screen() 
+function battle_screen(map_coord_x, map_coord_y) 
 	switch_sides()
 
-	map(90,34,30,17,0,0)
+	map(map_coord_x, map_coord_y, 30,17,0,0)
 	animate_sprite(player, player.direction)
 	enemy_spawn()
 	enemy_movement()
@@ -263,8 +274,7 @@ function enemy_movement()
 		if (x <= x_player_position + player.hitbox and x >= x_player_position - player.hitbox)
 		and (y <= player.y + player.hitbox and y >= player.y - player.hitbox) then -- enemy in range to attack
 			-- insert attack animation here
-			player.life = player.life - 1
-			print (player.life)
+			if player.life > 0 then player.life = player.life - 1 end
 			return
 		end
 
@@ -308,6 +318,8 @@ function enemy_spawn()
 end
 
 function enemy_kill() 
+	if screen_manager.screen == 0 then return end
+
 	if player.x < alignment.middle_align then x_player_position = player.x enemy_type = 1 end
 	if player.x > alignment.middle_align then x_player_position = player.x - alignment.middle_align enemy_type = 0 end
 
