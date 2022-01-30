@@ -178,6 +178,13 @@ title_text_2 = {
 	size = 3
 }
 
+stars = {
+	sprite = 462,
+	length = 2,
+	width = 2,
+	size = 2
+}
+
 screen_manager = { 
 	screen = -1,
 	transition_counter = 0,
@@ -319,10 +326,17 @@ trace (screen_manager.screen)
 end
 
 function splash_screen()
+	input()
+
 	map(screen_manager.map_coord_x, screen_manager.map_coord_y, 30,17,0,0)
 	generate_sprite(title_text_1)
 	generate_sprite(title_text_2)
 	print("THE RISE OF DUALITY",64,70,8)
+	print("Move - Arrows    Attack - Z", 45,95)
+	
+	if math.floor(math.fmod(time()/300,2)) == 0 then
+	print("Hold DOWN", 90, 110) end
+
 	if music_player.playing ~= 4 then 
 		music(4)
 		music_player.playing = 4
@@ -539,4 +553,5 @@ function TIC()
 		if player.y < alignment.bottom_margin and player.x < alignment.right_margin and player.x > alignment.left_margin then  render_screen() else 
 			screen_transition() end
 	end
+	print(player.y)
 end
