@@ -68,6 +68,8 @@ player = {
 	range = 15,
 	life = 3,
 	max_life = 3,
+	damage_buffer = 0,
+	damage_buffer_timeout = 50,
 	sith_kill_count = 0,
 	jedi_kill_count = 0
 }
@@ -112,7 +114,8 @@ header_text = {
 screen_manager = { 
 	screen = 0,
 	transition_counter = 0,
-	transition_speed = 100,
+	transition_speed = 50,
+	transition_time = 17,
 	map_coord_x = 0,
 	map_coord_y = 0
 }
@@ -184,9 +187,10 @@ end
 
 -- SCREENS --
 function render_screen()
-	if screen_manager.screen == 0 then start_screen() end
-	if screen_manager.screen == 1 then battle_screen(90,34) render_life() end
-	if screen_manager.screen == 2 then battle_screen(90,51) render_life() end
+	if screen_manager.screen == 0 then screen_manager.map_coord_x = 0 screen_manager.map_coord_y = 0 start_screen() end
+	if screen_manager.screen == 1 then screen_manager.map_coord_x = 90 screen_manager.map_coord_y = 34 battle_screen() render_life() end
+	if screen_manager.screen == 2 then screen_manager.map_coord_x = 90 screen_manager.map_coord_y = 51 battle_screen() render_life() end
+	if screen_manager.screen == 3 then battle_screen() render_life() end
 end
 
 function render_life()
@@ -202,13 +206,25 @@ end
 
 function screen_transition()
 	if screen_manager.screen == 0 then
-		fire_left.y = fire_left.y - 1
-		fire_right.y = fire_right.y - 1
-		yoda.y = yoda.y - 1
-		header_text.y = header_text.y - 1
+		if math.floor(math.fmod(time()/screen_manager.transition_speed,2)) == 0 then
+			fire_left.y = fire_left.y - 1
+			fire_right.y = fire_right.y - 1
+			yoda.y = yoda.y - 1
+			header_text.y = header_text.y - 1
+			screen_manager.map_coord_y = screen_manager.map_coord_y + 1
+		end
 		start_screen()
 	end
 	if screen_manager.screen == 1 then
+		if math.floor(math.fmod(time()/screen_manager.transition_speed,2)) == 0 then
+			screen_manager.map_coord_y = screen_manager.map_coord_y + 1
+		end
+		battle_screen()
+	end
+	if screen_manager.screen == 2 then
+		if math.floor(math.fmod(time()/screen_manager.transition_speed,2)) == 0 then
+			screen_manager.map_coord_x = screen_manager.map_coord_x + (player.x - alignment.middle_align)/math.abs(player.x - alignment.middle_align)
+		end
 		battle_screen()
 	end
 	screen_manager.transition_counter = screen_manager.transition_counter + 1
@@ -217,7 +233,7 @@ end
 function start_screen()
 	input()
 
-	map()
+	map(screen_manager.map_coord_x, screen_manager.map_coord_y, 30,17,0,0)
 	animate_sprite(fire_left)
     animate_sprite(fire_right)
     generate_sprite(yoda)
@@ -230,10 +246,10 @@ function start_screen()
 	pick_up(lightsaber)
 end
 
-function battle_screen(map_coord_x, map_coord_y) 
+function battle_screen() 
 	switch_sides()
 
-	map(map_coord_x, map_coord_y, 30,17,0,0)
+	map(screen_manager.map_coord_x, screen_manager.map_coord_y, 30,17,0,0)
 	animate_sprite(player, player.direction)
 	enemy_spawn()
 	enemy_movement()
@@ -274,7 +290,7 @@ function enemy_movement()
 		if (x <= x_player_position + player.hitbox and x >= x_player_position - player.hitbox)
 		and (y <= player.y + player.hitbox and y >= player.y - player.hitbox) then -- enemy in range to attack
 			-- insert attack animation here
-			if player.life > 0 then player.life = player.life - 1 end
+			take_damage()
 			return
 		end
 
@@ -341,10 +357,18 @@ function enemy_kill()
 	end
 end
 
+function take_damage()
+	if player.life > 0 then 
+		if player.damage_buffer == 0 then player.life = player.life - 1 end
+		if player.damage_buffer < player.damage_buffer_timeout then player.damage_buffer = player.damage_buffer + 1 end
+		if player.damage_buffer >= player.damage_buffer_timeout then player.damage_buffer = 0 end
+	end
+end
+
 function TIC()
 	cls(14)
 
-	if screen_manager.transition_counter > screen_manager.transition_speed then 
+	if screen_manager.transition_counter > screen_manager.transition_time then 
 		screen_manager.screen = screen_manager.screen + 1 
 		screen_manager.transition_counter = 0 
 		player.x = alignment.middle_align + 10
@@ -352,7 +376,7 @@ function TIC()
 	end
 	
 	if screen_manager.transition_counter > 0 then screen_transition() else
-		if player.y < alignment.bottom_margin then  render_screen() else 
+		if player.y < alignment.bottom_margin and player.x < alignment.right_margin and player.x > alignment.left_margin then  render_screen() else 
 			screen_transition() end
 	end
 end
