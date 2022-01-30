@@ -68,6 +68,8 @@ player = {
 	range = 15,
 	life = 3,
 	max_life = 3,
+	damage_buffer = 0,
+	damage_buffer_timeout = 50,
 	sith_kill_count = 0,
 	jedi_kill_count = 0
 }
@@ -83,7 +85,8 @@ enemy_dark = {
 	length = 2,
 	width = 2,
 	size = 2,
-	animation_frames = 2
+	animation_frames = 2,
+	life = 1
 }
 
 enemy_light = { 
@@ -97,12 +100,48 @@ enemy_light = {
 	length = 2,
 	width = 2,
 	size = 2,
-	animation_frames = 2
+	animation_frames = 2,
+	life = 1
 }
 
-enemies = {}
-num_enemies = 0
-max_enemies = 2
+obi_wan = {
+	x = alignment.right_align,
+	y = 60,
+	sprite = 362,
+	sprite_idle = 362,
+	sprite_walk = 358,
+	sprite_attack = 362,
+	sprite_dead = 366,
+	direction = 1,
+	length = 2,
+	width = 2,
+	size = 3,
+	animation_frames = 2,
+	life = 3
+}
+
+darth_vader = {
+	x = alignment.right_align,
+	y = 50,
+	sprite = 394,
+	sprite_idle = 394,
+	sprite_walk = 390,
+	sprite_attack = 394,
+	sprite_dead = 398,
+	direction = 0,
+	length = 2,
+	width = 2,
+	size = 3,
+	animation_frames = 2,
+	life = 3
+}
+
+enemies = {
+	positions = {},
+	lives = {},
+	num_enemies = 0,
+	max_enemies = 2
+}
 
 header_text = {
 	x = 44,
@@ -112,9 +151,11 @@ header_text = {
 screen_manager = { 
 	screen = 0,
 	transition_counter = 0,
-	transition_speed = 100,
-	map_coord_x = 0,
-	map_coord_y = 0
+	transition_speed = 50,
+	transition_time = 17*2,
+	map_coord_x = 90,
+	map_coord_y = 17,
+	div = alignment.middle_align
 }
 
 GUI = {
@@ -179,14 +220,18 @@ end
 
 function switch_sides()
 	input()
-	if player.x <= alignment.middle_align then player.sprite = player.sprite + player.switch_sides end
+	if player.x <= screen_manager.div then player.sprite = player.sprite + player.switch_sides end
 end
 
 -- SCREENS --
 function render_screen()
 	if screen_manager.screen == 0 then start_screen() end
-	if screen_manager.screen == 1 then battle_screen(90,34) render_life() end
-	if screen_manager.screen == 2 then battle_screen(90,51) render_life() end
+	if screen_manager.screen == 1 then battle_screen() render_life() end
+	if screen_manager.screen == 2 then battle_screen() render_life() end
+	if screen_manager.screen == 3 then 
+		if screen_manager.map_coord_x < alignment.middle_align then screen_manager.div = alignment.right_margin end
+		if screen_manager.map_coord_x > alignment.middle_align then screen_manager.div = alignment.left_margin end
+		battle_screen() render_life() end
 end
 
 function render_life()
@@ -202,13 +247,26 @@ end
 
 function screen_transition()
 	if screen_manager.screen == 0 then
-		fire_left.y = fire_left.y - 1
-		fire_right.y = fire_right.y - 1
-		yoda.y = yoda.y - 1
-		header_text.y = header_text.y - 1
+		if math.floor(math.fmod(time()/screen_manager.transition_speed,2)) == 0 then
+			fire_left.y = fire_left.y - 1
+			fire_right.y = fire_right.y - 1
+			yoda.y = yoda.y - 1
+			header_text.y = header_text.y - 1
+			screen_manager.map_coord_y = screen_manager.map_coord_y + 1
+		end
 		start_screen()
 	end
 	if screen_manager.screen == 1 then
+		if math.floor(math.fmod(time()/screen_manager.transition_speed,2)) == 0 then
+			screen_manager.map_coord_y = screen_manager.map_coord_y + 1
+		end
+		battle_screen()
+	end
+	if screen_manager.screen == 2 then
+		screen_manager.transition_time = 30*2
+		if math.floor(math.fmod(time()/screen_manager.transition_speed,2)) == 0 then
+			screen_manager.map_coord_x = screen_manager.map_coord_x + (player.x - alignment.middle_align)/math.abs(player.x - alignment.middle_align)
+		end
 		battle_screen()
 	end
 	screen_manager.transition_counter = screen_manager.transition_counter + 1
@@ -217,7 +275,7 @@ end
 function start_screen()
 	input()
 
-	map()
+	map(screen_manager.map_coord_x, screen_manager.map_coord_y, 30,17,0,0)
 	animate_sprite(fire_left)
     animate_sprite(fire_right)
     generate_sprite(yoda)
@@ -230,12 +288,13 @@ function start_screen()
 	pick_up(lightsaber)
 end
 
-function battle_screen(map_coord_x, map_coord_y) 
+function battle_screen() 
 	switch_sides()
 
-	map(map_coord_x, map_coord_y, 30,17,0,0)
+	map(screen_manager.map_coord_x, screen_manager.map_coord_y, 30,17,0,0)
 	animate_sprite(player, player.direction)
 	enemy_spawn()
+	if(screen_manager.screen == 3) then mini_boss_spawn() end
 	enemy_movement()
 end
 
@@ -259,14 +318,14 @@ function enemy_movement()
 	enemy_type = nil
 	x_player_position = nil
 
-	if player.x <= alignment.middle_align then x_player_position = player.x enemy_type = 1 end
-	if player.x > alignment.middle_align then x_player_position = player.x - alignment.middle_align enemy_type = 0 end
+	if player.x <= screen_manager.div then x_player_position = player.x enemy_type = 1 end
+	if player.x > screen_manager.div then x_player_position = player.x - screen_manager.div enemy_type = 0 end
 	
-	for i = enemy_type, num_enemies - 1, 2 do
-		if enemies[i] == nil then goto continue end
+	for i = enemy_type, enemies.num_enemies - 1, 2 do
+		if enemies.positions[i] == nil then goto continue end
 		
-		x = enemies[i] & 0xFFFF -- unpack x
-		y = (enemies[i] >> 16) & 0xFFFF -- unpack y
+		x = enemies.positions[i] & 0xFFFF -- unpack x
+		y = (enemies.positions[i] >> 16) & 0xFFFF -- unpack y
 	
 		if (x > x_player_position + player.vision or x < x_player_position- player.vision)
 		and (y > player.y + player.vision or y < player.y - player.vision) then return end -- enemy deactivated
@@ -274,7 +333,7 @@ function enemy_movement()
 		if (x <= x_player_position + player.hitbox and x >= x_player_position - player.hitbox)
 		and (y <= player.y + player.hitbox and y >= player.y - player.hitbox) then -- enemy in range to attack
 			-- insert attack animation here
-			if player.life > 0 then player.life = player.life - 1 end
+			take_damage()
 			return
 		end
 
@@ -282,7 +341,7 @@ function enemy_movement()
 			x = x + (x_player_position - x)/math.abs(x_player_position - x) end -- move closer to player x axis
 		if y > player.y + player.hitbox or y < player.y - player.hitbox then y = y + (player.y - y)/math.abs(player.y - y) end -- move closer to player y axis
 
-		enemies[i] = x | (y << 16) -- pack (x,y)
+		enemies.positions[i] = x | (y << 16) -- pack (x,y)
 			
 		::continue::
 	end
@@ -290,49 +349,79 @@ end
 
 function enemy_spawn()
 	-- init
-	while num_enemies < max_enemies
+	while enemies.num_enemies < enemies.max_enemies
 	do
 		y = math.random(alignment.upper_margin - 40, alignment.bottom_margin)
-		x = math.random(0, alignment.middle_align)
+		x = math.random(0, screen_manager.div)
 
-		enemies[num_enemies] = x | (y << 16)
-		enemies[num_enemies + 1] = x | (y << 16)
-		num_enemies = num_enemies + 2
+		enemies.positions[enemies.num_enemies] = x | (y << 16)
+		enemies.positions[enemies.num_enemies + 1] = x | (y << 16)
+		
+		enemies.lives[enemies.num_enemies] = enemy_dark.life
+		enemies.lives[enemies.num_enemies + 1] = enemy_light.life
+		
+		enemies.num_enemies = enemies.num_enemies + 2
 	end
 	
 	-- render
-	for i = 0, num_enemies - 1 do
-		if enemies[i] == nil then goto continue end
+	for i = 0, enemies.num_enemies - 1 do
+		if enemies.positions[i] == nil then goto continue end
 		
-		x = enemies[i] & 0xFFFF
-		y = (enemies[i] >> 16) & 0xFFFF
+		x = enemies.positions[i] & 0xFFFF
+		y = (enemies.positions[i] >> 16) & 0xFFFF
 		
 		if math.fmod(i,2) == 0  then 
-			animate_sprite(enemy_dark, enemy_dark.direction, alignment.middle_align + x, y)
+			animate_sprite(enemy_dark, enemy_dark.direction, screen_manager.div + x, y)
 		else
-			animate_sprite(enemy_light, enemy_light.direction, alignment.middle_align - x, y)
+			animate_sprite(enemy_light, enemy_light.direction, screen_manager.div - x, y)
 		end
 		
 		::continue::
 	end
 end
 
+function mini_boss_spawn()
+	-- init
+	while enemies.num_enemies < enemies.max_enemies + 2 do
+		enemies.positions[enemies.num_enemies] = darth_vader.x | (darth_vader.y << 16)
+		enemies.positions[enemies.num_enemies + 1] = obi_wan.x | (obi_wan.y << 16)
+
+		enemies.lives[enemies.num_enemies] = darth_vader.life
+		enemies.lives[enemies.num_enemies + 1] = obi_wan.life
+
+		enemies.num_enemies = enemies.num_enemies + 2
+	end
+
+	-- render
+	if screen_manager.map_coord_x < alignment.middle_align then 
+		if enemies.positions[enemies.num_enemies - 1] == nil then return end
+		x = enemies.positions[enemies.num_enemies - 1] & 0xFFFF
+		y = (enemies.positions[enemies.num_enemies -1] >> 16) & 0xFFFF
+		animate_sprite(obi_wan, obi_wan.direction, screen_manager.div - x, y) end
+	if screen_manager.map_coord_x > alignment.middle_align then 
+		if enemies.positions[enemies.num_enemies - 2] == nil then return end
+		x = enemies.positions[enemies.num_enemies - 2] & 0xFFFF
+		y = (enemies.positions[enemies.num_enemies - 2] >> 16) & 0xFFFF
+		animate_sprite(darth_vader, darth_vader.direction, screen_manager.div + x, y) end
+end
+
 function enemy_kill() 
-	if screen_manager.screen == 0 then return end
+	if screen_manager.screen == 0 or screen_manager.screen == 4 then return end
 
-	if player.x < alignment.middle_align then x_player_position = player.x enemy_type = 1 end
-	if player.x > alignment.middle_align then x_player_position = player.x - alignment.middle_align enemy_type = 0 end
+	if player.x < screen_manager.div then x_player_position = player.x enemy_type = 1 end
+	if player.x > screen_manager.div then x_player_position = player.x - screen_manager.div enemy_type = 0 end
 
-	for i = enemy_type, num_enemies - 1, 2 do
-		if enemies[i] == nil then goto continue end
+	for i = enemy_type, enemies.num_enemies - 1, 2 do
+		if enemies.positions[i] == nil then goto continue end
 		
-		x = enemies[i] & 0xFFFF -- unpack x
-		y = (enemies[i] >> 16) & 0xFFFF -- unpack y
+		x = enemies.positions[i] & 0xFFFF -- unpack x
+		y = (enemies.positions[i] >> 16) & 0xFFFF -- unpack y
 		
 		if x <= x_player_position + player.range and x >= x_player_position - player.range
 		and y <= player.y + player.range and y >= player.y - player.range then
 			-- insert death animation here
-			enemies[i] = nil -- remove enemy
+			
+			enemies.positions[i] = nil -- remove enemy
 			player.sith_kill_count = player.sith_kill_count + (1 * enemy_type)
 			player.jedi_kill_count = player.jedi_kill_count + (1 * -(enemy_type - 1)) -- increment counters
 		end
@@ -341,18 +430,30 @@ function enemy_kill()
 	end
 end
 
+function take_damage()
+	if player.life > 0 then 
+		if player.damage_buffer == 0 then player.life = player.life - 1 end
+		if player.damage_buffer < player.damage_buffer_timeout then player.damage_buffer = player.damage_buffer + 1 end
+		if player.damage_buffer >= player.damage_buffer_timeout then player.damage_buffer = 0 end
+	end
+end
+
 function TIC()
 	cls(14)
 
-	if screen_manager.transition_counter > screen_manager.transition_speed then 
+	if screen_manager.transition_counter > screen_manager.transition_time then 
 		screen_manager.screen = screen_manager.screen + 1 
 		screen_manager.transition_counter = 0 
-		player.x = alignment.middle_align + 10
-		player.y = 0
+		if screen_manager.screen == 3 then
+			if screen_manager.map_coord_x < alignment.middle_align then player.x = alignment.right_margin -10 end
+			if screen_manager.map_coord_x > alignment.middle_align then player.x = alignment.left_margin + 10 end
+		else
+			player.y = 0
+		end
 	end
 	
 	if screen_manager.transition_counter > 0 then screen_transition() else
-		if player.y < alignment.bottom_margin then  render_screen() else 
+		if player.y < alignment.bottom_margin and player.x < alignment.right_margin and player.x > alignment.left_margin then  render_screen() else 
 			screen_transition() end
 	end
 end
