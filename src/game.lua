@@ -189,7 +189,7 @@ screen_manager = {
 	screen = -1,
 	transition_counter = 0,
 	transition_speed = 50,
-	transition_time = 17*2,
+	transition_time = 17*2-2,
 	map_coord_x = 90,
 	map_coord_y = 0,
 	div = alignment.middle_align
@@ -294,7 +294,11 @@ function render_life()
 end
 
 function screen_transition()
-trace (screen_manager.screen)
+	if screen_manager.screen == -1 then
+		if math.floor(math.fmod(time()/screen_manager.transition_speed,2)) == 0 then
+			screen_manager.map_coord_y = screen_manager.map_coord_y + 1
+		end
+	end
 	if screen_manager.screen == 0 then
 		if math.floor(math.fmod(time()/screen_manager.transition_speed,2)) == 0 then
 			fire_left.y = fire_left.y - 1
@@ -323,6 +327,26 @@ trace (screen_manager.screen)
 	end
 	map(screen_manager.map_coord_x, screen_manager.map_coord_y, 30,17,0,0)
 	screen_manager.transition_counter = screen_manager.transition_counter + 1
+end
+
+function reset_screen()
+	-- reset player posititon and enemies
+	if screen_manager.screen > 1 then
+		enemies.positions = {}
+		enemies.lives = {}
+		enemies.num_enemies = 0
+	end
+	if screen_manager.screen == 0 then
+		player.x = alignment.middle_align
+		player.y = 90
+	end
+	if screen_manager.screen == 1 or screen_manager.screen == 2 then
+		player.y = 0
+	end
+	if screen_manager.screen >= 3 then
+		if screen_manager.map_coord_x < alignment.middle_align then player.x = alignment.right_margin -10 end
+		if screen_manager.map_coord_x > alignment.middle_align then player.x = alignment.left_margin + 10 end
+	end
 end
 
 function splash_screen()
@@ -535,23 +559,12 @@ function TIC()
 
 	if screen_manager.transition_counter > screen_manager.transition_time then 
 		screen_manager.screen = screen_manager.screen + 1 
-		screen_manager.transition_counter = 0 
-		if screen_manager.screen > 1 then
-			enemies.positions = {}
-			enemies.lives = {}
-			enemies.num_enemies = 0
-		end
-		if screen_manager.screen >= 3 then
-			if screen_manager.map_coord_x < alignment.middle_align then player.x = alignment.right_margin -10 end
-			if screen_manager.map_coord_x > alignment.middle_align then player.x = alignment.left_margin + 10 end
-		else
-			player.y = 0
-		end
+		screen_manager.transition_counter = 0	
+		reset_screen()
 	end
 	
 	if screen_manager.transition_counter > 0 then screen_transition() else
 		if player.y < alignment.bottom_margin and player.x < alignment.right_margin and player.x > alignment.left_margin then  render_screen() else 
 			screen_transition() end
 	end
-	print(player.y)
 end
