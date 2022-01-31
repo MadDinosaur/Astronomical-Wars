@@ -150,9 +150,12 @@ boss = {
 
 enemies = {
 	positions = {},
-	lives = {},
+	life = {},
+	damage_buffer = {},
+	damage_buffer_timeout = 25,
 	num_enemies = 0,
-	max_enemies = 2
+	max_enemies = 2,
+	speed = 100
 }
 
 header_text = {
@@ -210,7 +213,7 @@ GUI = {
 		y = 0,
 		width = 1,
 		length = 1
-	} 
+	}
 }
 
 -- RENDERING AND ANIMATING --
@@ -252,7 +255,7 @@ function input()
 		return 
 		end	
 	if btn(4) then
-		if player.lightsaber then player.sprite = player.sprite_attack enemy_kill() end
+		if player.lightsaber then player.sprite = player.sprite_attack sfx(10) enemy_kill() end
 		return
 	end
 
@@ -280,6 +283,7 @@ function render_screen()
 		if screen_manager.map_coord_x > alignment.middle_align then screen_manager.div = alignment.left_margin end
 		battle_screen() render_life() end
 	if screen_manager.screen == 4 then boss_screen() render_life() end
+	if screen_manager.screen == 5 then credits_screen() end
 end
 
 function render_life()
@@ -325,6 +329,10 @@ function screen_transition()
 			screen_manager.map_coord_x = screen_manager.map_coord_x + (player.x - alignment.middle_align)/math.abs(player.x - alignment.middle_align)
 		end
 	end
+	if screen_manager.screen == 4 then
+		screen_manager.map_coord_x = 90
+		screen_manager.map_coord_y = 0
+	end
 	map(screen_manager.map_coord_x, screen_manager.map_coord_y, 30,17,0,0)
 	screen_manager.transition_counter = screen_manager.transition_counter + 1
 end
@@ -333,7 +341,7 @@ function reset_screen()
 	-- reset player posititon and enemies
 	if screen_manager.screen > 1 then
 		enemies.positions = {}
-		enemies.lives = {}
+		enemies.life = {}
 		enemies.num_enemies = 0
 	end
 	if screen_manager.screen == 0 then
@@ -401,6 +409,22 @@ function boss_screen()
 	boss_spawn()
 end
 
+function credits_screen()
+	input()
+	map(screen_manager.map_coord_x, screen_manager.map_coord_y, 30,17,0,0)
+	
+	print("Thank you very much for playing!",0,0)
+	print("This game is still in development!",0,10)
+	animate_sprite(player, player.direction)
+	
+	print("Credit to:",0,30)
+	print("@MadDinosaur - code",0,40)
+	print("@Sakris - art & sound",0,50)
+	print("@Edu - creative director",0,60)
+	
+	print("May the force be with you!",0,80,8)
+end
+
 -- MECHANICS --
 function pick_up(object)
 	if player.x >= object.x - object.hitbox
@@ -418,6 +442,8 @@ function pick_up(object)
 end
 
 function enemy_movement()
+	if math.floor(math.fmod(time()/enemies.speed,2)) == 0 then return end -- define speed
+
 	enemy_type = nil
 	x_player_position = nil
 
@@ -454,20 +480,23 @@ function enemy_spawn()
 	-- init
 	while enemies.num_enemies < enemies.max_enemies
 	do
-		y = math.random(alignment.upper_margin - 40, alignment.bottom_margin)
-		x = math.random(0, screen_manager.div)
+		y = math.random(alignment.upper_margin - 50, alignment.bottom_margin + 20)
+		if screen_manager.div > alignment.left_margin then x = math.random(10, screen_manager.div - 10) else x = math.random(10, alignment.right_margin - screen_manager.div) end
 
 		enemies.positions[enemies.num_enemies] = x | (y << 16)
 		enemies.positions[enemies.num_enemies + 1] = x | (y << 16)
 		
-		enemies.lives[enemies.num_enemies] = enemy_dark.life
-		enemies.lives[enemies.num_enemies + 1] = enemy_light.life
+		enemies.life[enemies.num_enemies] = enemy_dark.life
+		enemies.life[enemies.num_enemies + 1] = enemy_light.life
+
+		enemies.damage_buffer[enemies.num_enemies] = 0
+		enemies.damage_buffer[enemies.num_enemies + 1] = 0
 		
 		enemies.num_enemies = enemies.num_enemies + 2
 	end
 	
 	-- render
-	for i = 0, enemies.num_enemies - 1 do
+	for i = 0, enemies.max_enemies - 1 do
 		if enemies.positions[i] == nil then goto continue end
 		
 		x = enemies.positions[i] & 0xFFFF
@@ -489,8 +518,11 @@ function mini_boss_spawn()
 		enemies.positions[enemies.num_enemies] = darth_vader.x | (darth_vader.y << 16)
 		enemies.positions[enemies.num_enemies + 1] = obi_wan.x | (obi_wan.y << 16)
 
-		enemies.lives[enemies.num_enemies] = darth_vader.life
-		enemies.lives[enemies.num_enemies + 1] = obi_wan.life
+		enemies.life[enemies.num_enemies] = darth_vader.life
+		enemies.life[enemies.num_enemies + 1] = obi_wan.life
+
+		enemies.damage_buffer[enemies.num_enemies] = 0
+		enemies.damage_buffer[enemies.num_enemies + 1] = 0
 
 		enemies.num_enemies = enemies.num_enemies + 2
 	end
@@ -531,18 +563,24 @@ function enemy_kill()
 		
 		if x <= x_player_position + player.range and x >= x_player_position - player.range
 		and y <= player.y + player.range and y >= player.y - player.range then
-			enemies.lives[i] = enemies.lives[i] - 1 -- reduce life points
-			
-			if enemies.lives[i] == 0 then
-				-- insert death animation here
-				enemies.positions[i] = nil -- remove enemy
-				player.sith_kill_count = player.sith_kill_count + (1 * enemy_type)
-				player.jedi_kill_count = player.jedi_kill_count + (1 * -(enemy_type - 1)) -- increment counters
-			end
+			deal_damage(i)
 			return
 		end
 		
 		::continue::
+	end
+end
+
+function deal_damage(i)
+	if enemies.life[i] > 0 then
+		if enemies.damage_buffer[i] == 0 then enemies.life[i] = enemies.life[i] - 1 sfx (8) end
+		if enemies.damage_buffer[i] < enemies.damage_buffer_timeout then enemies.damage_buffer[i] = enemies.damage_buffer[i] + 1 end
+		if enemies.damage_buffer[i] >= enemies.damage_buffer_timeout then enemies.damage_buffer[i] = 0 end
+	else
+		-- insert death animation here
+		enemies.positions[i] = nil -- remove enemy
+		player.sith_kill_count = player.sith_kill_count + (1 * enemy_type)
+		player.jedi_kill_count = player.jedi_kill_count + (1 * -(enemy_type - 1)) -- increment counters
 	end
 end
 
