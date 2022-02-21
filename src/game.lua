@@ -1,3 +1,8 @@
+-- title:  Astronomical Wars
+-- author: TriceraTOP
+-- desc:   Global Game Jam 2022 game for the theme Duality
+-- script: lua
+
 require "screens"
 
 function TIC()
