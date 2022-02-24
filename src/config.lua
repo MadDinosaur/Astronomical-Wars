@@ -1,3 +1,5 @@
+WALL = 161
+
 alignment = {
     left_align = 44,
     middle_align = 104,
@@ -6,6 +8,13 @@ alignment = {
     bottom_margin = 128,
     right_margin = 230,
     left_margin = 0
+}
+
+status = {
+    idle = 0,
+    walk = -4,
+    attack = 4,
+    dead = 8
 }
 
 yoda = {
@@ -70,17 +79,12 @@ player = {
     max_life = 3,
     damage_buffer = 0,
     damage_buffer_timeout = 50,
-    sith_kill_count = 0,
-    jedi_kill_count = 0
 }
 
 enemy_dark = {
     x,
     y,
     sprite = 420,
-    sprite_idle = 420,
-    sprite_walk = 416,
-    sprite_attack = 424,
     direction = 0,
     length = 2,
     width = 2,
@@ -93,9 +97,6 @@ enemy_light = {
     x,
     y,
     sprite = 452,
-    sprite_idle = 452,
-    sprite_walk = 448,
-    sprite_attack = 456,
     direction = 0,
     length = 2,
     width = 2,
@@ -149,9 +150,7 @@ boss = {
 }
 
 enemies = {
-    positions = {},
-    life = {},
-    damage_buffer = {},
+    controller = {},
     damage_buffer_timeout = 25,
     num_enemies = 0,
     max_enemies = 2,

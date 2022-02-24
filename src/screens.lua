@@ -198,6 +198,7 @@ function credits_screen()
     print("@MadDinosaur - code", 0, 40)
     print("@Sakris - art & sound", 0, 50)
     print("@Edu - creative director", 0, 60)
+    print("@educorreia932 - refactoring master", 0, 70)
 
     print("May the force be with you!", 0, 80, 8)
 end

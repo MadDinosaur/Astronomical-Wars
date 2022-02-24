@@ -34,7 +34,12 @@ function generate_sprite(name, sprite, flip, scale, x, y)
     spr(ssprite, sx, sy, 0, sscale, sflip, 0, name.width, name.length)
 end
 
-function animate_sprite(name, flip, x, y)
+function animate_sprite(name, flip, x, y, sprite)
     t = (time() // 10) % 60 // (60 / name.animation_frames)
-    generate_sprite(name, name.sprite + (t * name.width), flip, name.size, x, y)
+
+    if sprite ~= nil then
+        generate_sprite(name, sprite + (t * name.width), flip, name.size, x, y)
+    else
+        generate_sprite(name, name.sprite + (t * name.width), flip, name.size, x, y)
+    end
 end
