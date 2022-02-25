@@ -164,7 +164,7 @@ function boss_spawn()
     end -- sith
 
     -- render
-    animate_sprite(boss, boss.direction)
+    animate_sprite(boss, boss.direction, screen_manager.div - (player.x - screen_manager.div), player.y)
 end
 
 function enemy_kill()
