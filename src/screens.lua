@@ -5,6 +5,10 @@ require "rendering"
 require "utils"
 
 function render_screen()
+    if screen_manager.screen == -2 then
+        game_over_screen()
+    end
+
     if screen_manager.screen == -1 then
         splash_screen()
     end
@@ -31,6 +35,13 @@ function render_screen()
         render_life()
     end
     
+    if screen_manager.screen == 4 then
+        screen_manager.div = alignment.middle_align
+
+        boss_screen()
+        render_life()
+    end
+
     if screen_manager.screen == 5 then
         credits_screen()
     end
@@ -179,8 +190,6 @@ function battle_screen()
 end
 
 function boss_screen()
-    switch_sides()
-
     map(screen_manager.map_coord_x, screen_manager.map_coord_y, 30, 17, 0, 0)
     animate_sprite(player, player.direction)
     boss_spawn()
@@ -191,7 +200,7 @@ function credits_screen()
     map(screen_manager.map_coord_x, screen_manager.map_coord_y, 30, 17, 0, 0)
 
     print("Thank you very much for playing!", 0, 0)
-    print("This game is still in development!", 0, 10)
+    print("This game was made for Global Game Jam'22!", 0, 10)
     animate_sprite(player, player.direction)
 
     print("Credit to:", 0, 30)
@@ -200,5 +209,12 @@ function credits_screen()
     print("@Edu - creative director", 0, 60)
     print("@educorreia932 - refactoring master", 0, 70)
 
-    print("May the force be with you!", 0, 80, 8)
+    print("May the force be with you!", 0, 90, 8)
+end
+
+function game_over_screen()
+    map(screen_manager.map_coord_x, screen_manager.map_coord_y, 30, 17, 0, 0)
+
+    generate_sprite(player, player.sprite, player.direction)
+    print("GAME OVER", alignment.left_align, 60, 15, false, 3)
 end

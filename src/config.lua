@@ -138,8 +138,8 @@ darth_vader = {
 }
 
 boss = {
-    x = -player.x,
-    y = player.y,
+    x,
+    y,
     sprite,
     direction = -player.direction,
     length = 2,
@@ -153,7 +153,7 @@ enemies = {
     controller = {},
     damage_buffer_timeout = 25,
     num_enemies = 0,
-    max_enemies = 2,
+    max_enemies = 6,
     speed = 100
 }
 

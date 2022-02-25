@@ -231,5 +231,8 @@ function take_damage()
         if player.damage_buffer >= player.damage_buffer_timeout then
             player.damage_buffer = 0
         end
+    else -- player death
+        player.sprite = player.sprite_dead
+        screen_manager.screen = -2 -- switch to game over screen
     end
 end
